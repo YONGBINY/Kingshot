@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>건설 시간 계산기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* placeholder 텍스트 색상 조정 (선택 사항) */
+        input::placeholder {
+            color: #9ca3af; /* Tailwind gray-400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">건설 시간 계산기</h2>
+
+        <div class="mb-4">
+            <label for="buildingTypeSelect" class="block text-gray-700 text-sm font-medium mb-2">건물 유형 선택:</label>
+            <select id="buildingTypeSelect" onchange="populateBuildingLevels(); resetCalculationResult();" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">건물 유형 선택</option>
+                <option value="Town Center">Town Center(도시센터)</option>
+                <option value="Embassy">Embassy(대사관)</option>
+                <option value="Command Center">Command Center(지휘부)</option>
+                <option value="Academy">Academy(연구소)</option>
+                <option value="Barracks">Barracks(보병대)</option>
+                <option value="Range">Range(궁병대)</option>
+                <option value="Stable">Stable(기병대)</option>
+                <option value="Store House">Store House(창고)</option>
+                <option value="Guard Station">Guard Station(방위소)</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="startLevelSelect" class="block text-gray-700 text-sm font-medium mb-2">시작 레벨 선택:</label>
+            <select id="startLevelSelect" onchange="resetCalculationResult()" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" disabled>
+                <option value="">시작 레벨을 선택하세요</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="endLevelSelect" class="block text-gray-700 text-sm font-medium mb-2">목표 레벨 선택:</label>
+            <select id="endLevelSelect" onchange="resetCalculationResult()" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" disabled>
+                <option value="">목표 레벨을 선택하세요</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="speedBuff" class="block text-gray-700 text-sm font-medium mb-2">총 건설 가속률 (%):</label>
+            <input type="number" id="speedBuff" value="0" step="0.1" class="block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+        </div>
+
+        <div class="mb-6">
+            <label class="inline-flex items-center">
+                <input type="checkbox" id="decrees" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                <span class="ml-2 text-gray-700 text-sm">법령(Decrees) 적용 (시간 20% 단축)</span>
+            </label>
+        </div>
+
+        <div class="mb-6 border p-4 rounded-md bg-gray-50">
+            <h4 class="text-gray-700 text-sm font-medium mb-2">(스킬)샬로 영웅 자원 감소 효과:</h4>
+            <div class="flex flex-col space-y-1">
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="-1" checked class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">적용 안 함</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="0" class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">1레벨 (3% 감소)</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="1" class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">2레벨 (6% 감소)</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="2" class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">3레벨 (9% 감소)</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="3" class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">4레벨 (12% 감소)</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="shalloEffect" value="4" class="form-radio h-4 w-4 text-purple-600">
+                    <span class="ml-2 text-gray-700 text-sm">5레벨 (15% 감소)</span>
+                </label>
+            </div>
+        </div>
+
+        <button onclick="calculateBuildingTime()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+            건설 시간 계산
+        </button>
+
+        <div id="calculationResult" class="mt-6 p-4 bg-blue-50 rounded-md text-blue-800 hidden">
+            <h3 class="text-xl font-semibold mb-2">계산 결과:</h3>
+            <p><strong>총 건설 시간:</strong> <span id="totalTimeDisplay" class="font-medium"></span></p>
+            <p><strong>총 소모 자원:</strong></p>
+            <div id="totalResourcesDisplay" class="ml-4"></div>
+        </div>
+
+        <div class="mt-6">
+            <h3 class="text-xl font-semibold mb-2">누적된 항목:</h3>
+            <ul id="accumulatedItemsList" class="list-disc ml-5 text-gray-700">
+                <li class="text-gray-500" style="font-size:0.95em; font-weight:400;">누적된 항목이 없습니다.</li>
+            </ul>
+            <div class="mt-4">
+                <p class="text-gray-700 text-base"><strong>총 누적 시간:</strong> <span id="totalAccumulatedTimeDisplay" class="font-medium text-blue-700">0초</span></p>
+                <p class="text-gray-700 text-base"><strong>총 누적 자원:</strong></p>
+                <div id="totalAccumulatedResourcesDisplay" class="ml-4">
+                    <div style="font-size:0.95em; font-weight:400;">나무: 0</div>
+                    <div style="font-size:0.95em; font-weight:400;">식량: 0</div>
+                    <div style="font-size:0.95em; font-weight:400;">돌: 0</div>
+                    <div style="font-size:0.95em; font-weight:400;">철: 0</div>
+                    <div style="font-size:0.95em; font-weight:400;">황금: 0</div>
+                </div>
+            </div>
+            <button onclick="resetTotalTime()" class="w-full bg-gray-300 text-gray-800 py-2 px-4 mt-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                누적 값 초기화
+            </button>
+        </div>
+
+    </div>
+
+    <script src="buildings.js"></script>
+    <script>
+        // 전역 변수 초기화
+        let totalAccumulatedSeconds = 0;
+        let accumulatedItems = [];
+        let totalAccumulatedResources = { wood: 0, bread: 0, stone: 0, iron: 0, truegold: 0 }; // truegold 추가
+
+        // 시간 파싱 및 변환 함수 (기존 코드와 동일)
+        function parseTimeToSeconds(timeStr) {
+            let totalSeconds = 0;
+            const daysMatch = timeStr.match(/(\d+)\s*d/);
+            const hoursMatch = timeStr.match(/(\d+)\s*h/);
+            const minutesMatch = timeStr.match(/(\d+)\s*m/);
+            const secondsMatch = timeStr.match(/(\d+)\s*s/);
+
+            if (daysMatch) totalSeconds += parseInt(daysMatch[1]) * 24 * 60 * 60;
+            if (hoursMatch) totalSeconds += parseInt(hoursMatch[1]) * 60 * 60;
+            if (minutesMatch) totalSeconds += parseInt(minutesMatch[1]) * 60;
+            if (secondsMatch) totalSeconds += parseInt(secondsMatch[1]);
+            return totalSeconds;
+        }
+
+        // 초를 'X일 Y시간 Z분 P초' 형식으로 변환하는 함수 (기존 코드와 동일)
+        function formatSecondsToTime(totalSeconds) {
+            const days = Math.floor(totalSeconds / (24 * 60 * 60));
+            totalSeconds %= (24 * 60 * 60);
+            const hours = Math.floor(totalSeconds / (60 * 60));
+            totalSeconds %= (60 * 60);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            let timeParts = [];
+            if (days > 0) timeParts.push(`${days}일`);
+            if (hours > 0) timeParts.push(`${hours}시간`);
+            if (minutes > 0) timeParts.push(`${minutes}분`);
+            if (seconds > 0 || timeParts.length === 0) timeParts.push(`${seconds}초`); // 시간이 0초일 때 '0초' 표시
+
+            return timeParts.join(' ');
+        }
+
+        // 자원 숫자를 보기 좋게 포맷하는 함수 (예: 1000000 -> 1.00M)
+        function formatResourceDisplay(num) {
+            if (num >= 1000000000) {
+                return (num / 1000000000).toFixed(2) + 'B';
+            }
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(2) + 'K';
+            }
+            return num.toFixed(2); // 1000 미만인 경우도 소수점 둘째 자리까지 표시
+        }
+
+        // 레벨 문자열을 정렬 가능한 값으로 파싱하는 함수
+        function parseSortableLevelValue(level) {
+            if (typeof level === 'number') {
+                return { type: 'number', value: level, sub: 0 };
+            }
+            if (typeof level === 'string') {
+                if (level.startsWith('TG')) {
+                    // "TG 1", "TG 1-1", "TG1-1" 등의 형식을 모두 처리
+                    const cleanLevel = level.substring(2).trim(); // " 1", "1-1"
+                    const parts = cleanLevel.split('-'); // ["1"] 또는 ["1", "1"]
+
+                    let tgNum = parseInt(parts[0]);
+                    let subNum = 0;
+                    if (parts.length > 1) {
+                        subNum = parseInt(parts[1]);
+                    }
+                    return { type: 'tg', value: tgNum, sub: subNum };
+                }
+                // '30-1', '30-2', '30-3', '30-4' 같은 형식 처리
+                if (level.startsWith('30-')) {
+                    const parts = level.split('-');
+                    let baseNum = parseInt(parts[0]); // 30
+                    let subNum = parseInt(parts[1]);  // 1, 2, 3, 4
+                    return { type: '30-sub', value: baseNum, sub: subNum };
+                }
+            }
+            return { type: 'unknown', value: 0, sub: 0 };
+        }
+
+        // 커스텀 정렬 함수 - 모든 레벨을 내림차순으로 정렬
+        function levelComparator(a, b) {
+            const parsedA = parseSortableLevelValue(a.level);
+            const parsedB = parseSortableLevelValue(b.level);
+
+            // 우선순위 1: TG 레벨 (가장 높음, 내림차순 정렬)
+            if (parsedA.type === 'tg' && parsedB.type !== 'tg') return -1; // A가 TG이고 B가 TG가 아니면 A가 먼저
+            if (parsedA.type !== 'tg' && parsedB.type === 'tg') return 1;  // B가 TG이고 A가 TG가 아니면 B가 먼저
+            if (parsedA.type === 'tg' && parsedB.type === 'tg') {
+                if (parsedA.value !== parsedB.value) {
+                    return parsedB.value - parsedA.value; // TG 주 레벨은 내림차순 (TG 5가 TG 4보다 먼저)
+                }
+                return parsedB.sub - parsedA.sub; // TG 세부 레벨은 내림차순 (TG X-4가 TG X-3보다 먼저)
+            }
+
+            // 우선순위 2: 30-sub 레벨 (TG 다음, 내림차순 정렬)
+            if (parsedA.type === '30-sub' && parsedB.type !== '30-sub') return -1; // A가 30-sub이고 B가 아니면 A가 먼저 (B는 숫자 레벨)
+            if (parsedA.type !== '30-sub' && parsedB.type === '30-sub') return 1;  // B가 30-sub이고 A가 아니면 B가 먼저 (A는 숫자 레벨)
+            if (parsedA.type === '30-sub' && parsedB.type === '30-sub') {
+                if (parsedA.value !== parsedB.value) {
+                    return parsedB.value - parsedA.value; // 30-sub 기본 레벨은 내림차순 (항상 30이므로 큰 의미는 없음)
+                }
+                return parsedB.sub - parsedA.sub; // 30-sub 세부 레벨은 내림차순 (30-4가 30-1보다 먼저)
+            }
+
+            // 우선순위 3: 일반 숫자 레벨 (가장 낮음, 내림차순 정렬)
+            if (parsedA.type === 'number' && parsedB.type === 'number') {
+                return parsedB.value - parsedA.value; // 숫자 레벨은 내림차순 (30이 1보다 먼저)
+            }
+            
+            return 0; // 동일하거나 알 수 없는 타입
+        }
+
+        // 건물 레벨 드롭다운 채우기
+        function populateBuildingLevels() {
+            const buildingTypeSelect = document.getElementById('buildingTypeSelect');
+            const startLevelSelect = document.getElementById('startLevelSelect');
+            const endLevelSelect = document.getElementById('endLevelSelect');
+
+            const selectedBuildingType = buildingTypeSelect.value;
+            startLevelSelect.innerHTML = '<option value="">시작 레벨을 선택하세요</option>';
+            endLevelSelect.innerHTML = '<option value="">목표 레벨을 선택하세요</option>';
+
+            if (selectedBuildingType) {
+                const levels = buildingData[selectedBuildingType];
+                if (levels) {
+                    // 레벨을 커스텀 정렬 함수를 사용하여 정렬
+                    // 정렬 전 levels 배열의 복사본을 만들어 원본 데이터를 변경하지 않도록 함
+                    const sortedLevels = [...levels].sort(levelComparator);
+
+                    sortedLevels.forEach(data => {
+                        const optionStart = document.createElement('option');
+                        optionStart.value = data.level;
+                        optionStart.textContent = `${data.level}`;
+                        startLevelSelect.appendChild(optionStart);
+
+                        const optionEnd = document.createElement('option');
+                        optionEnd.value = data.level;
+                        optionEnd.textContent = `${data.level}`;
+                        endLevelSelect.appendChild(optionEnd);
+                    });
+
+                    startLevelSelect.disabled = false;
+                    endLevelSelect.disabled = false;
+                }
+            } else {
+                startLevelSelect.disabled = true;
+                endLevelSelect.disabled = true;
+            }
+        }
+
+        // 건설 시간 계산 함수
+        function calculateBuildingTime() {
+            const buildingTypeSelect = document.getElementById('buildingTypeSelect');
+            const startLevelSelect = document.getElementById('startLevelSelect');
+            const endLevelSelect = document.getElementById('endLevelSelect');
+            const speedBuffInput = document.getElementById('speedBuff');
+            const decreesCheckbox = document.getElementById('decrees');
+            const shalloEffectRadios = document.getElementsByName('shalloEffect');
+            
+            const resultDiv = document.getElementById('calculationResult');
+            const totalTimeDisplay = document.getElementById('totalTimeDisplay');
+            const totalResourcesDisplay = document.getElementById('totalResourcesDisplay');
+
+            resultDiv.classList.add('hidden'); // 결과 숨기기
+
+            const selectedBuildingType = buildingTypeSelect.value;
+            const startLevel = startLevelSelect.value;
+            const endLevel = endLevelSelect.value;
+            let speedBuff = parseFloat(speedBuffInput.value) / 100 || 0; // %를 소수로 변환
+
+            if (!selectedBuildingType || !startLevel || !endLevel) {
+                alert('건물 유형, 시작 레벨, 목표 레벨을 모두 선택해주세요.');
+                return;
+            }
+
+            const buildingLevels = buildingData[selectedBuildingType];
+            
+            // 시작 레벨이 목표 레벨보다 높아야 합니다 (내림차순 정렬 기준)
+            // 즉, levelComparator({level: startLevel}, {level: endLevel}) 값이 양수여야 함
+            if (levelComparator({level: startLevel}, {level: endLevel}) <= 0) {
+                alert('시작 레벨은 목표 레벨보다 높아야 합니다.');
+                return;
+            }
+
+            let totalSecondsRequired = 0;
+            let accumulatedWood = 0;
+            let accumulatedBread = 0;
+            let accumulatedStone = 0;
+            let accumulatedIron = 0;
+            let accumulatedTruegold = 0; // 황금 자원 누적 추가
+
+            // 건물 데이터 배열을 내림차순으로 정렬
+            const sortedBuildingLevels = [...buildingLevels].sort(levelComparator);
+
+            let levelsToSum = [];
+            let startCollecting = false;
+
+            for (const levelData of sortedBuildingLevels) {
+                // 목표 레벨 (endLevel)을 만나면 수집 시작
+                if (levelComparator({level: levelData.level}, {level: endLevel}) === 0) {
+                    startCollecting = true;
+                }
+
+                // 수집 중인 경우
+                if (startCollecting) {
+                    // 시작 레벨 (startLevel)은 포함하지 않음 (현재 레벨이므로)
+                    if (levelComparator({level: levelData.level}, {level: startLevel}) === 0) {
+                        break; // 시작 레벨을 만나면 루프 종료
+                    }
+                    levelsToSum.push(levelData);
+                }
+            }
+
+            // 수집된 레벨들의 시간과 자원 합산
+            for (const levelData of levelsToSum) {
+                totalSecondsRequired += parseTimeToSeconds(levelData.time);
+                accumulatedWood += levelData.wood || 0;
+                accumulatedBread += levelData.bread || 0;
+                accumulatedStone += levelData.stone || 0;
+                accumulatedIron += levelData.iron || 0;
+                accumulatedTruegold += levelData.truegold || 0;
+            }
+
+            // 법령 적용 (20% 시간 단축)
+            if (decreesCheckbox.checked) {
+                totalSecondsRequired *= 0.80; // 20% 단축 = 80% 시간 소요
+            }
+
+            // 총 건설 가속률 적용 (수정된 로직)
+            // '가속률'은 시간 단축이 아니라 건설 속도 증가를 의미하므로, (1 + 가속률)로 나누어줍니다.
+            if (speedBuff > -1) { // 0% 가속률일 때도 1로 나누어지도록 (1+0)
+                totalSecondsRequired /= (1 + speedBuff);
+            }
+
+
+            // 샬로 영웅 자원 감소 효과 적용
+            let shalloDiscount = 0;
+            for (const radio of shalloEffectRadios) {
+                if (radio.checked) {
+                    if (radio.value === "0") shalloDiscount = 0.03;
+                    else if (radio.value === "1") shalloDiscount = 0.06;
+                    else if (radio.value === "2") shalloDiscount = 0.09;
+                    else if (radio.value === "3") shalloDiscount = 0.12;
+                    else if (radio.value === "4") shalloDiscount = 0.15;
+                    break;
+                }
+            }
+            if (shalloDiscount > 0) {
+                accumulatedWood *= (1 - shalloDiscount);
+                accumulatedBread *= (1 - shalloDiscount);
+                accumulatedStone *= (1 - shalloDiscount);
+                accumulatedIron *= (1 - shalloDiscount);
+                // 황금 자원에는 샬로 효과가 적용되지 않으므로 truegold는 그대로 둠
+            }
+
+            // 결과 표시
+            totalTimeDisplay.textContent = formatSecondsToTime(Math.round(totalSecondsRequired));
+            totalResourcesDisplay.innerHTML =
+                `<div style="font-size:0.95em; font-weight:400;">나무: ${formatResourceDisplay(Math.round(accumulatedWood))}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">식량: ${formatResourceDisplay(Math.round(accumulatedBread))}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">돌: ${formatResourceDisplay(Math.round(accumulatedStone))}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">철: ${formatResourceDisplay(Math.round(accumulatedIron))}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">황금: ${formatResourceDisplay(Math.round(accumulatedTruegold))}</div>`; // 황금 자원 표시
+
+            resultDiv.classList.remove('hidden'); // 결과 보이기
+
+            // 누적 기능 추가
+            totalAccumulatedSeconds += totalSecondsRequired;
+            accumulatedItems.push(`[${selectedBuildingType}] 레벨 ${startLevel} 부터 ${endLevel}까지 (${formatSecondsToTime(Math.round(totalSecondsRequired))})`);
+
+            // 누적 자원 업데이트 (round 처리 추가)
+            totalAccumulatedResources.wood += Math.round(accumulatedWood);
+            totalAccumulatedResources.bread += Math.round(accumulatedBread);
+            totalAccumulatedResources.stone += Math.round(accumulatedStone);
+            totalAccumulatedResources.iron += Math.round(accumulatedIron);
+            totalAccumulatedResources.truegold += Math.round(accumulatedTruegold); // 황금 누적
+
+            updateTotalDisplays();
+        }
+
+        // 총 누적 시간 및 자원 표시 업데이트 함수
+        function updateTotalDisplays() {
+            document.getElementById('totalAccumulatedTimeDisplay').textContent = formatSecondsToTime(Math.round(totalAccumulatedSeconds));
+            document.getElementById('totalAccumulatedResourcesDisplay').innerHTML =
+                `<div style="font-size:0.95em; font-weight:400;">나무: ${formatResourceDisplay(totalAccumulatedResources.wood)}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">식량: ${formatResourceDisplay(totalAccumulatedResources.bread)}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">돌: ${formatResourceDisplay(totalAccumulatedResources.stone)}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">철: ${formatResourceDisplay(totalAccumulatedResources.iron)}</div>` +
+                `<div style="font-size:0.95em; font-weight:400;">황금: ${formatResourceDisplay(totalAccumulatedResources.truegold)}</div>`;
+
+            const listElement = document.getElementById('accumulatedItemsList');
+            listElement.innerHTML = accumulatedItems.length > 0
+                ? accumulatedItems.map(item => `<li style="font-size:0.95em; font-weight:400;">${item}</li>`).join('')
+                : '<li class="text-gray-500" style="font-size:0.95em; font-weight:400;">누적된 항목이 없습니다.</li>';
+        }
+
+        // resetTotalTime: 총 누적 시간 초기화 함수
+        function resetTotalTime() {
+            totalAccumulatedSeconds = 0;
+            accumulatedItems = []; 
+            // 누적 자원 초기화 ("truegold" 추가)
+            totalAccumulatedResources = { wood: 0, bread: 0, stone: 0, iron: 0, truegold: 0 };
+            updateTotalDisplays();
+            resetCalculationResult();
+        }
+
+        // resetCalculationResult: 계산 결과 섹션을 숨기는 함수
+        function resetCalculationResult() {
+            document.getElementById('calculationResult').classList.add('hidden');
+        }
+
+        // DOMContentLoaded 이벤트 발생 시 초기 함수 호출
+        document.addEventListener('DOMContentLoaded', () => {
+            populateBuildingLevels(); // buildingData가 buildings.js에서 이미 로드되었다고 가정
+        });
+    </script>
+</body>
+</html>
